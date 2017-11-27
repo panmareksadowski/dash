@@ -17,6 +17,9 @@
 
 #include "chainparamsseeds.h"
 
+//need this to calculate hashtarget
+#include <arith_uint256.h>
+
 static CBlock CreateGenesisBlock(const char* pszTimestamp, const CScript& genesisOutputScript, uint32_t nTime, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const CAmount& genesisReward)
 {
     CMutableTransaction txNew;
@@ -56,6 +59,14 @@ static CBlock CreateGenesisBlock(uint32_t nTime, uint32_t nNonce, uint32_t nBits
     return CreateGenesisBlock(pszTimestamp, genesisOutputScript, nTime, nNonce, nBits, nVersion, genesisReward);
 }
 
+//change genesis block for our network
+static CBlock CreateGenesisBlockMyNet(uint32_t nTime, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const CAmount& genesisReward)
+{
+    const char* pszTimestamp = "Wired 27/Nov/2017 New coin"; //change the genesis block
+    const CScript genesisOutputScript = CScript() << ParseHex("040184710fa689ad5023690c80f3a49c8f13f8d45b8c857fbcbc8bc4a8e4d3eb4b10f4d4604fa08dce601aaf0f470216fe1b51850b4acf21b179c45070ac7b03a9") << OP_CHECKSIG;
+    return CreateGenesisBlock(pszTimestamp, genesisOutputScript, nTime, nNonce, nBits, nVersion, genesisReward);
+}
+
 /**
  * Main network
  */
@@ -89,15 +100,15 @@ public:
         consensus.nMajorityEnforceBlockUpgrade = 750;
         consensus.nMajorityRejectBlockOutdated = 950;
         consensus.nMajorityWindow = 1000;
-        consensus.BIP34Height = 1;
-        consensus.BIP34Hash = uint256S("0x00000ffd590b1485b3caadc19b22e6379c733355108f107a430458cdf3407ab6"); //start with genesis
-        consensus.powLimit = uint256S("00000fffff000000000000000000000000000000000000000000000000000000");
-        consensus.nPowTargetTimespan = 24 * 60 * 60; // Dash: 1 day
-        consensus.nPowTargetSpacing = 2.5 * 60; // Dash: 2.5 minutes
+        consensus.BIP34Height = -1; //deasactivate BIP34
+        consensus.BIP34Hash = uint256(); 
+        consensus.powLimit = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"); //change start difficulty to easy mine firsts blocks
+        consensus.nPowTargetTimespan = 2 * 60 * 60; // Dash: 1 day -> change to 2 hours
+        consensus.nPowTargetSpacing = 60; // Dash: 2.5 minutes -> change to 1 minute
         consensus.fPowAllowMinDifficultyBlocks = false;
         consensus.fPowNoRetargeting = false;
-        consensus.nRuleChangeActivationThreshold = 1916; // 95% of 2016
-        consensus.nMinerConfirmationWindow = 2016; // nPowTargetTimespan / nPowTargetSpacing
+        consensus.nRuleChangeActivationThreshold = 112; // 95% of 120
+        consensus.nMinerConfirmationWindow = 2*60; // nPowTargetTimespan / nPowTargetSpacing
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].bit = 28;
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nStartTime = 1199145601; // January 1, 2008
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nTimeout = 1230767999; // December 31, 2008
@@ -118,8 +129,7 @@ public:
         consensus.nMinimumChainWork = uint256S("0x0"); // 0, no work required on new chain
 
         // By default assume that the signatures in ancestors of this block are valid.
-        consensus.defaultAssumeValid = uint256S("0x00000ffd590b1485b3caadc19b22e6379c733355108f107a430458cdf3407ab6"); //genesis block hash
-														       //no assume on new chain
+        consensus.defaultAssumeValid = uint256S("0x0"); //we will set this value later when we will calculate hash
         /**
          * The message start string is designed to be unlikely to occur in normal data.
          * The characters are rarely used upper ASCII, not valid as UTF-8, and produce
@@ -135,10 +145,34 @@ public:
         nDelayGetHeadersTime = 24 * 60 * 60;
         nPruneAfterHeight = 100000;
 
-        genesis = CreateGenesisBlock(1390095618, 28917698, 0x1e0ffff0, 1, 50 * COIN);
+	//change time genesis block, nonce set to 0(we find accurate nonce later),start difficulty(nBits) to easy mine first block
+        genesis = CreateGenesisBlockMyNet(1511785886, 0, 0x207fffff, 1, 50 * COIN);
+
+	/**
+         * Mine genesis block
+         */
+        arith_uint256 hashTarget = arith_uint256().SetCompact(genesis.nBits);
+
+	//find nNonce and nTime which fulfill hashTarget
+        uint256 hash = genesis.GetHash();
+        while (UintToArith256(hash) > hashTarget)
+        {
+            genesis.nNonce++;
+            if(genesis.nNonce == 0) //if nNonce wrapped, try change time
+                genesis.nTime++;
+            hash = genesis.GetHash();
+        }
+
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256S("0x00000ffd590b1485b3caadc19b22e6379c733355108f107a430458cdf3407ab6"));
-        assert(genesis.hashMerkleRoot == uint256S("0xe0028eb9648db56b1ac77cf090b99048a8007e2bb64b68f092c03c7f56a662c7"));
+
+	//don't need this checks we have calculated propely hashes
+	//if we want we can first calculate properly hashes and then hardcode them here
+        //assert(consensus.hashGenesisBlock == uint256S("0x00000ffd590b1485b3caadc19b22e6379c733355108f107a430458cdf3407ab6"));
+        //assert(genesis.hashMerkleRoot == uint256S("0xe0028eb9648db56b1ac77cf090b99048a8007e2bb64b68f092c03c7f56a662c7"));
+
+	// By default assume that the signatures in ancestors of this block are valid.
+	consensus.defaultAssumeValid = uint256S("0x00000ffd590b1485b3caadc19b22e6379c733355108f107a430458cdf3407ab6"); //genesis block hash
+														       //no assume on new chain
 
 
         vSeeds.clear();  //! No DNS seeds.
@@ -161,7 +195,7 @@ public:
         // Dash BIP44 coin type is '5'
         nExtCoinType = 5;
 
-        fMiningRequiresPeers = true;
+        fMiningRequiresPeers = true; //can't mining in one peer network
         fDefaultConsistencyChecks = false;
         fRequireStandard = true;
         fMineBlocksOnDemand = false;
@@ -173,8 +207,8 @@ public:
 
         checkpointData = (CCheckpointData) {
             boost::assign::map_list_of
-            (  0, uint256S("0x00000ffd590b1485b3caadc19b22e6379c733355108f107a430458cdf3407ab6")), //we now only genesis block in new chain
-            1390095618, // * UNIX timestamp of last checkpoint block -> genesis
+            (  0, consensus.hashGenesisBlock), //we now only genesis block in new chain
+            genesis.nTime, // * UNIX timestamp of last checkpoint block -> genesis block time
             0,    // * total number of transactions between genesis and last checkpoint -> 0 transaction on new chain
                         //   (the tx=... number in the SetBestChain debug.log lines)
             0        // * estimated number of transactions per day after checkpoint -> doesn't matter
