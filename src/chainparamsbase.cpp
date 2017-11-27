@@ -10,7 +10,7 @@
 
 #include <assert.h>
 
-const std::string CBaseChainParams::MAIN = "main";
+const std::string CBaseChainParams::MAIN = "mynet"; //should be teh same as strNetworkID
 const std::string CBaseChainParams::TESTNET = "test";
 const std::string CBaseChainParams::REGTEST = "regtest";
 
@@ -32,7 +32,8 @@ class CBaseMainParams : public CBaseChainParams
 public:
     CBaseMainParams()
     {
-        nRPCPort = 9998;
+        nRPCPort = 9998; //rpc port can stay the same
+	strDataDir = "mynet"; //new folder for our new chain
     }
 };
 static CBaseMainParams mainParams;
