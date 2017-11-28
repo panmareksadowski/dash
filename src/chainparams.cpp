@@ -141,12 +141,12 @@ public:
         pchMessageStart[3] = 0xbe;
         vAlertPubKey = ParseHex("048240a8748a80a286b270ba126705ced4f2ce5a7847b3610ea3c06513150dade2a8512ed5ea86320824683fc0818f0ac019214973e677acd1244f6d0571fc5103");
         nDefaultPort = 18999; //change port to comunicate in P2P
-        nMaxTipAge = 6 * 60 * 60; // ~144 blocks behind -> 2 x fork detection time, was 24 * 60 * 60 in bitcoin
+        nMaxTipAge = 24 * 60 * 60; // ~144 blocks behind -> 2 x fork detection time, was 24 * 60 * 60 in bitcoin
         nDelayGetHeadersTime = 24 * 60 * 60;
         nPruneAfterHeight = 100000;
 
 	//change time genesis block, nonce set to 0(we find accurate nonce later),start difficulty(nBits) to easy mine first block
-        genesis = CreateGenesisBlockMyNet(1511785886, 0, 0x207fffff, 1, 50 * COIN);
+        genesis = CreateGenesisBlockMyNet(1511854473, 0, 0x207fffff, 1, 50 * COIN);
 
 	/**
          * Mine genesis block
